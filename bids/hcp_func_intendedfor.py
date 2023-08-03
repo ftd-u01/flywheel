@@ -83,10 +83,14 @@ for elem in sessions_to_process:
     # Everything - only used in case of error to print out everything
     all_bold_data = layout.get(subject=subj, session=sess, datatype='func', extension='nii.gz')
 
-    if len(fmap_runs) == 0:
+    all_fmap_data = layout.get(subject=subj, session=sess, datatype='fmap', extension='nii.gz')
+
+    if len(fmap_runs) == 0 and len(all_fmap_data) == 0:
         print(f"{subj},{sess},NA,NA,NA,NA,NA,False,No fmap data")
         continue
-    if len(rest_runs) == 0 and len(tf_bold_data) == 0:
+    # Rest is done before task, if you had task but no rest the fmap ordering would be wrong
+    # so we don't check for that case, and users will have to fix manually if it happens
+    if len(rest_runs) == 0 and len(rf_bold_data) == 0:
         print(f"{subj},{sess},NA,NA,NA,NA,NA,False,No fmri data")
         continue
 
@@ -128,12 +132,12 @@ for elem in sessions_to_process:
         # Don't do anything to the data in this case - require manual intervention
         for im in all_bold_data:
             ent = im.entities
-        try:
-            run = ent['run']
-        except KeyError:
-            run = "NA"
-        print(f"{ent['subject']},{ent['session']},{ent['task']},{run},{ent['direction']},"
-                    f"{ent['suffix']},{im.relpath},False,Extra fmap pairs")
+            try:
+                run = ent['run']
+            except KeyError:
+                run = "NA"
+            print(f"{ent['subject']},{ent['session']},{ent['task']},{run},{ent['direction']},"
+                f"{ent['suffix']},{im.relpath},False,Extra fmap pairs")
         continue
 
     # This happens if rfmri is re-acquired. Need to remove partial scans to get the mapping correct
@@ -145,8 +149,8 @@ for elem in sessions_to_process:
                 run = ent['run']
             except KeyError:
                 run = "NA"
-                print(f"{ent['subject']},{ent['session']},{ent['task']},{run},{ent['direction']},"
-                      f"{ent['suffix']},{im.relpath},False,Extra func or too few fmaps")
+            print(f"{ent['subject']},{ent['session']},{ent['task']},{run},{ent['direction']},"
+                f"{ent['suffix']},{im.relpath},False,Extra func or too few fmaps")
         continue
 
     # The usual case is two runs of rest fmri with corresponding fmaps
@@ -161,11 +165,7 @@ for elem in sessions_to_process:
         fmaps_assigned = intendFmaps(fmap_sidecar_paths, rf_bold_intendedfor_paths)
         for im in rf_bold_data_single_run:
             ent = im.entities
-        try:
-            run = ent['run']
-        except KeyError:
-            run = "NA"
-        print(f"{ent['subject']},{ent['session']},{ent['task']},{ent['run']},{ent['direction']},{ent['suffix']},{im.relpath},{fmaps_assigned},None")
+            print(f"{ent['subject']},{ent['session']},{ent['task']},{ent['run']},{ent['direction']},{ent['suffix']},{im.relpath},{fmaps_assigned},None")
 
     # Now task - there may be multiple runs, but not more field maps
     # Only use fmap run-3 for task
